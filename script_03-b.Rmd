@@ -25,23 +25,33 @@ sep_old <-
              skip = 3) %>% 
   clean_names() %>% 
   filter(! is.na(course_title)) %>% 
-  select( -instructor_full_name, -course_section_code, -(grad:total)) %>%
-  rename_with(~ str_replace(.x, "course_", "")) %>% 
-  group_by(id, title, name, department) %>% 
-  summarize(u_grad = sum(u_grad), .groups = "drop") %>% 
-  filter(u_grad > 10)
+  select(-grad, -non_degree, -x_reg, -vus, -employee, 
+         -withdraw, -total, -instructor_full_name, -course_section_code) %>%
+  rename(id = course_id,
+         title = course_title,
+         name = course_name,
+         department = course_department) %>% 
+  filter(u_grad > 10) %>%
+  group_by(title) %>%
+  mutate(u_grad = sum(u_grad)) %>%
+  distinct()
 
 
 sep_new <- 
-  read_excel("downloaded_data//class_enrollment_summary_by_term_9-22-2020.xlsx", 
+  read_excel("downloaded_data/class_enrollment_summary_by_term_9-22-2020.xlsx", 
              skip = 3) %>% 
   clean_names() %>% 
   filter(! is.na(course_title)) %>% 
-  select( -instructor_full_name, -course_section_code, -(grad:total)) %>%
-  rename_with(~ str_replace(.x, "course_", "")) %>% 
-  group_by(id, title, name, department) %>% 
-  summarize(u_grad = sum(u_grad), .groups = "drop") %>% 
-  filter(u_grad > 10)
+  select(-grad, -non_degree, -x_reg, -vus, -employee, 
+         -withdraw, -total, -instructor_full_name, -course_section_code) %>%
+  rename(id = course_id,
+         title = course_title,
+         name = course_name,
+         department = course_department) %>% 
+  filter(u_grad > 10) %>%
+  group_by(title) %>%
+  mutate(u_grad = sum(u_grad)) %>%
+  distinct()
 ```
 
 ### Scene 1
@@ -50,9 +60,35 @@ sep_new <-
 
 a) Make a table using **gt** which shows the five courses with the biggest increase. Use the [How to make a table](https://davidkane9.github.io/PPBDS/tools.html#how-to-make-a-table) section of *The Primer*.
 
+```{r}
+sep <- inner_join(sep_old, sep_new, by = 'id')
+
+sep2 <- sep %>%
+  mutate(difference = u_grad.y - u_grad.x) %>%
+  arrange(desc(difference)) %>%
+  slice(1:5)
+  
+sep2_gt <- gt(sep2)
+```
+
+
 b) Make a table using **gt** which shows the five courses with the biggest decrease.
 
+```{r}
+sep1 <- sep %>%
+  mutate(difference = u_grad.y - u_grad.x) %>%
+  arrange(difference) %>%
+  slice(1:5)
+
+sep1_gt <- gt(sep1)
+```
+
 c) Make a nice looking graphic which shows these 10 courses.
+
+```{r}
+sep_joined <- rbind()
+```
+
 
 d) Write down some thoughts about what might explain these increases and decreases. Or is it all just random? How would we know?
 
@@ -66,7 +102,17 @@ See [here](https://rpubs.com/dkane/week-3) for my answers. No need to copy exact
 
 **Prompt:** Dean Amanda Claybaugh is worried that the amount of work that some classes assigned in the first few weeks of class. Describe an ideal Preceptor Table with no missing data which would allow us to investigate this situation. What data is missing and why? 
 
+We'd want the workloads for each course during the first three weeks. Ideally,
+we'd have data for each individual member of the course and why they decided to 
+keep or drop a class.
+
+An infinite preceptor table would give us all the possible data that we could ever want. An ideal
+preceptor table would limit it down 
+
 With our actual Preceptor Table, how might we investigate the effect of work assigned in the first two weeks? Would the estimated Average Treatment Effect be accurate? Why or why not?
+
+We'd to know the difference between expected hours worked during the course
+and actual hours. We could use this info to run a regression discontinuity design.
 
 Make a spreadsheet --- I recommend using Google sheets, but anything will do --- which shows a simple version of that actual Preceptor Table. What are the units? What are the outcomes? What is the treatment? What is the causal effect? You may assign whichever of the 10 classes you like to treatment and the rest to control.
 
